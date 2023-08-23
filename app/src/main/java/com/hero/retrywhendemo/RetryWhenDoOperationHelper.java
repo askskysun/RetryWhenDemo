@@ -48,6 +48,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
      */
     private AtomicInteger count = new AtomicInteger(0);
     private Builder<T> builder = new Builder<>();
+    private Disposable disposable;
 
     public static Builder getInstance() {
         return new Builder();
@@ -62,7 +63,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         }
     }
 
-    public void doRetryWhenOperation() {
+    public Disposable doRetryWhenOperation() {
         count.set(0);
         Observable<OnNextResultBean> objectObservable = Observable.create((ObservableEmitter<OnNextResultBean> emitter) -> {
             doOperation(emitter);
@@ -82,15 +83,17 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         if (builder.owner != null) {
             objectObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.owner)))
                     .subscribe(observer);
-            return;
+            return this.disposable;
         }
         objectObservable.subscribe(observer);
+        return this.disposable;
     }
 
     private Observer<OnNextResultBean> getObserver() {
         Observer<OnNextResultBean> observer = new Observer<OnNextResultBean>() {
             @Override
-            public void onSubscribe(@NotNull Disposable d) {
+            public void onSubscribe(@NotNull Disposable disposable) {
+                RetryWhenDoOperationHelper.this.disposable = disposable;
                 if (ISDEBUG) {
                     Log.i(TAG, "Disposable..." + Thread.currentThread());
                 }

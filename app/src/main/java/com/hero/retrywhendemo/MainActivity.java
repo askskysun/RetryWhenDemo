@@ -1,16 +1,24 @@
 package com.hero.retrywhendemo;
 
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+
 import java.util.Arrays;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static int count;
+
+    /**
+     * 操作的回调 其中失败成功的数据结构是个泛型，可以自己定义
+     */
     private RetryWhenDoOperationHelper.CallBack<RetryWhenDoOperationHelper.SimpleFailedBean, String> callBack = new RetryWhenDoOperationHelper.CallBack<RetryWhenDoOperationHelper.SimpleFailedBean, String>() {
         @Override
         public void onFailed(RetryWhenDoOperationHelper.SimpleFailedBean failedBean) {
@@ -23,6 +31,9 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * 实现操作暴露的接口  即需要重试的操作
+     */
     private RetryWhenDoOperationHelper.OnDoOperationListener onDoOperationListener = new RetryWhenDoOperationHelper.OnDoOperationListener<String, RetryWhenDoOperationHelper.SimpleFailedBean, String>() {
         /**
          * 进行操作
@@ -65,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void doRetryWhenOperation() {
         count = 0;
-        RetryWhenDoOperationHelper.getInstance()
+        Disposable disposable = RetryWhenDoOperationHelper.getInstance()
                 //重试列表，即每次重试相隔的时间  默认3秒重试一次
                 .setDelayTimeList(Arrays.asList(3, 2, 3, 1, 2, 4))
                 // 执行线程 默认io线程
