@@ -1,0 +1,20 @@
+*.iml
+.gradle
+/local.properties
+.idea
+.svn
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+Would refuse to remove current working directory
+./.gitignore
+./build.gradle
+./libs
+./proguard-rules.pro
+./src
+*.apk
+*.li
+*/build/
