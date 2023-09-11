@@ -6,6 +6,12 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import com.hero.retrywhendo.JsonUtils;
+import com.hero.retrywhendo.RetryWhenDoOperationHelper;
+import com.hero.retrywhendo.bean.SimpleFailedBean;
+import com.hero.retrywhendo.interfaces.CallBack;
+import com.hero.retrywhendo.interfaces.OnDoOperationListener;
+
 import java.util.Arrays;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -19,10 +25,10 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 操作的回调 其中失败成功的数据结构是个泛型，可以自己定义
      */
-    private RetryWhenDoOperationHelper.CallBack<RetryWhenDoOperationHelper.SimpleFailedBean, String> callBack = new RetryWhenDoOperationHelper.CallBack<RetryWhenDoOperationHelper.SimpleFailedBean, String>() {
+    private CallBack<SimpleFailedBean, String> callBack = new CallBack<SimpleFailedBean, String>() {
         @Override
-        public void onFailed(RetryWhenDoOperationHelper.SimpleFailedBean failedBean) {
-            Log.i(TAG, "final onFailed " + Thread.currentThread() + "  simpleFailedBean:" + RetryWhenDoOperationHelper.javabeanToJson(failedBean));
+        public void onFailed(SimpleFailedBean failedBean) {
+            Log.i(TAG, "final onFailed " + Thread.currentThread() + "  simpleFailedBean:" + JsonUtils.javabeanToJson(failedBean));
         }
 
         @Override
@@ -34,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 实现操作暴露的接口  即需要重试的操作
      */
-    private RetryWhenDoOperationHelper.OnDoOperationListener onDoOperationListener = new RetryWhenDoOperationHelper.OnDoOperationListener<String, RetryWhenDoOperationHelper.SimpleFailedBean, String>() {
+    private OnDoOperationListener onDoOperationListener = new OnDoOperationListener<String, SimpleFailedBean, String>() {
         /**
          * 进行操作
          *
@@ -42,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
          * @param callBack 每次操作的回调  注意与上面最终的回调区分 ；其中回调的失败、成功的数据类型可以自定义 F, S
          */
         @Override
-        public void onDoOperation(String str, RetryWhenDoOperationHelper.CallBack<RetryWhenDoOperationHelper.SimpleFailedBean, String> callBack) {
+        public void onDoOperation(String str, CallBack<SimpleFailedBean, String> callBack) {
             count++;
             Log.i(TAG, "doAsyncOperation: " + Thread.currentThread() + " 处理参数为： " + str + " count:" + count);
                      /*   if (count > 5) {
@@ -53,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    RetryWhenDoOperationHelper.SimpleFailedBean simpleFailedBean = new RetryWhenDoOperationHelper.SimpleFailedBean();
+                    SimpleFailedBean simpleFailedBean = new SimpleFailedBean();
                     simpleFailedBean.setCodeStr("111");
                     simpleFailedBean.setMsgStr("传入参数为：" + str + "，但是处理失败了！");
                     callBack.onFailed(simpleFailedBean);
