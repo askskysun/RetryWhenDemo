@@ -1,12 +1,16 @@
 package com.hero.retrywhendo;
 
 import android.util.Log;
+
 import com.hero.retrywhendo.bean.OnNextResultBean;
 import com.hero.retrywhendo.interfaces.CallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
+
 import org.jetbrains.annotations.NotNull;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import autodispose2.AutoDispose;
 import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
 import io.reactivex.rxjava3.core.Observable;
@@ -21,7 +25,6 @@ import io.reactivex.rxjava3.disposables.Disposable;
  * @param <F> 操作失败回调的参数，多参数则封装成bean
  * @param <S> 操作成功回调的参数，多参数则封装成bean
  * </pre>
- * Author by sun, Email 1910713921@qq.com, Date on 2023/7/21.
  */
 public class RetryWhenDoOperationHelper<T, F, S> {
 
@@ -93,10 +96,11 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 if (ISDEBUG) {
                     Log.i(TAG, "onNext..." + Thread.currentThread() + " onNextResultBean: " + JsonUtils.javabeanToJson(onNextResultBean));
                 }
-                if (builder.getFinalCallBackWeakRef() == null) {
-                    return;
-                }
-                CallBack finalCallBack = builder.getFinalCallBackWeakRef().get();
+//                if (builder.getFinalCallBackWeakRef() == null) {
+//                    return;
+//                }
+//                CallBack finalCallBack = builder.getFinalCallBackWeakRef().get();
+                CallBack finalCallBack = builder.getFinalCallBack();
                 //注意要与对应的类型一致，否则异常中断
                 Object r = onNextResultBean.getR();
                 if (onNextResultBean.isSuccessed()) {
@@ -114,6 +118,11 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             public void onError(@NotNull Throwable e) {
                 if (ISDEBUG) {
                     Log.e(TAG, "onError..." + Thread.currentThread(), e);
+                }
+
+                CallBack finalCallBack = builder.getFinalCallBack();
+                if (finalCallBack != null) {
+                    finalCallBack.onFailed(e.getMessage());
                 }
             }
 
@@ -136,10 +145,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         Log.i(TAG, "开始执行操作: ");
         //进行操作（同步、异步都使用回调结果处理）
         //传入操作后回调处理
-        if (builder.getOnDoOperationListenerWeakRef() == null) {
-            return;
-        }
-        OnDoOperationListener onDoOperationListener = builder.getOnDoOperationListenerWeakRef().get();
+        OnDoOperationListener onDoOperationListener = builder.getOnDoOperationListener();
         if (onDoOperationListener == null) {
             return;
         }
@@ -151,6 +157,8 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                     return;
                 }
 
+                boolean disposed = emitter.isDisposed();
+                Log.i(TAG, "emitter.isDisposed：" + disposed +" disposable:"+ disposable.isDisposed());
                 count.set(count.get() + 1);
                 if (count.get() > builder.getDelayTimeList().size()) {
                     //重试列表已经都重试完了，最终回调错误信息
@@ -162,7 +170,6 @@ public class RetryWhenDoOperationHelper<T, F, S> {
 
                 //重试次数未使用完，报个错，使之能进行重试
                 emitter.onError(new RuntimeException("处理失败"));
-                emitter.onComplete();
             }
 
             /**

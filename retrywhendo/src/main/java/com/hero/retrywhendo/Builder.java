@@ -1,5 +1,6 @@
 package com.hero.retrywhendo;
 
+import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.hero.retrywhendo.interfaces.CallBack;
@@ -27,13 +28,13 @@ public class Builder<T> {
      * 重试结束，最终的回调
      * 注意此处使用弱引用 所以不要以局部变量作为参数，否则很快被回收
      */
-    private WeakReference<CallBack> finalCallBackWeakRef;
+    private CallBack finalCallBack;
 
     /**
      * 操作暴露的接口
      * 注意此处使用弱引用 所以不要以局部变量作为参数，否则很快被回收
      */
-    private WeakReference<OnDoOperationListener> onDoOperationListenerWeakRef;
+    private OnDoOperationListener onDoOperationListener;
 
     /**
      * 重试列表，即每次重试相隔的时间  默认3秒重试一次
@@ -59,12 +60,12 @@ public class Builder<T> {
         return t;
     }
 
-    public WeakReference<CallBack> getFinalCallBackWeakRef() {
-        return finalCallBackWeakRef;
+    public CallBack getFinalCallBack() {
+        return finalCallBack;
     }
 
-    public WeakReference<OnDoOperationListener> getOnDoOperationListenerWeakRef() {
-        return onDoOperationListenerWeakRef;
+    public OnDoOperationListener getOnDoOperationListener() {
+        return onDoOperationListener;
     }
 
     public List<Integer> getDelayTimeList() {
@@ -115,16 +116,12 @@ public class Builder<T> {
     }
 
     public Builder setFinalCallBack(CallBack finalCallBack) {
-        if (finalCallBack != null) {
-            finalCallBackWeakRef = new WeakReference<>(finalCallBack);
-        }
+        this.finalCallBack = finalCallBack;
         return this;
     }
 
     public Builder setOnDoOperationListener(OnDoOperationListener onDoOperationListener) {
-        if (onDoOperationListener != null) {
-            onDoOperationListenerWeakRef = new WeakReference<>(onDoOperationListener);
-        }
+        this.onDoOperationListener = onDoOperationListener;
         return this;
     }
 
@@ -136,8 +133,8 @@ public class Builder<T> {
     public String toString() {
         return "Builder{" +
                 "t=" + JsonUtils.javabeanToJson(t) +
-                ", finalCallBackWeakRef=" + finalCallBackWeakRef +
-                ", onDoOperationListenerWeakRef=" + onDoOperationListenerWeakRef +
+                ", finalCallBack=" + finalCallBack +
+                ", onDoOperationListener=" + onDoOperationListener +
                 ", delayTimeList=" + delayTimeList.toString() +
                 ", subscribeOnScheduler=" + subscribeOnScheduler +
                 ", observeOnScheduler=" + observeOnScheduler +
