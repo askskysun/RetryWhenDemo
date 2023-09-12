@@ -96,22 +96,6 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 if (ISDEBUG) {
                     Log.i(TAG, "onNext..." + Thread.currentThread() + " onNextResultBean: " + JsonUtils.javabeanToJson(onNextResultBean));
                 }
-//                if (builder.getFinalCallBackWeakRef() == null) {
-//                    return;
-//                }
-//                CallBack finalCallBack = builder.getFinalCallBackWeakRef().get();
-                CallBack finalCallBack = builder.getFinalCallBack();
-                //注意要与对应的类型一致，否则异常中断
-                Object r = onNextResultBean.getR();
-                if (onNextResultBean.isSuccessed()) {
-                    if (finalCallBack != null) {
-                        finalCallBack.onSuccess(r);
-                    }
-                    return;
-                }
-                if (finalCallBack != null) {
-                    finalCallBack.onFailed(r);
-                }
             }
 
             @Override
@@ -136,6 +120,21 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         return observer;
     }
 
+    private void onCallBackResult(@NotNull OnNextResultBean onNextResultBean) {
+        CallBack finalCallBack = builder.getFinalCallBack();
+        //注意要与对应的类型一致，否则异常中断
+        Object r = onNextResultBean.getR();
+        if (onNextResultBean.isSuccessed()) {
+            if (finalCallBack != null) {
+                finalCallBack.onSuccess(r);
+            }
+            return;
+        }
+        if (finalCallBack != null) {
+            finalCallBack.onFailed(r);
+        }
+    }
+
     /**
      * 执行操作
      *
@@ -157,13 +156,18 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                     return;
                 }
 
-                boolean disposed = emitter.isDisposed();
-                Log.i(TAG, "emitter.isDisposed：" + disposed +" disposable:"+ disposable.isDisposed());
+                if (ISDEBUG) {
+                    //在最后一次时 emitter.isDisposed() = true，无法使用 onNext传递
+                    Log.i(TAG, "emitter.isDisposed：" + emitter.isDisposed() + " disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
+                }
                 count.set(count.get() + 1);
                 if (count.get() > builder.getDelayTimeList().size()) {
                     //重试列表已经都重试完了，最终回调错误信息
-                    OnNextResultBean<F> onNextResultBean = new OnNextResultBean<>(false, failedBean);
-                    emitter.onNext(onNextResultBean);
+                    CallBack finalCallBack = builder.getFinalCallBack();
+                    if (finalCallBack != null) {
+                        finalCallBack.onFailed(failedBean);
+                    }
+                    emitter.onNext(new OnNextResultBean<>(false, failedBean));
                     emitter.onComplete();
                     return;
                 }
@@ -182,8 +186,11 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                     return;
                 }
                 //回调最终结果
-                OnNextResultBean<S> onNextResultBean = new OnNextResultBean<>(true, successBean);
-                emitter.onNext(onNextResultBean);
+                CallBack finalCallBack = builder.getFinalCallBack();
+                if (finalCallBack != null) {
+                    finalCallBack.onSuccess(successBean);
+                }
+                emitter.onNext(new OnNextResultBean(true, successBean));
                 //结束
                 emitter.onComplete();
             }
