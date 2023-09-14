@@ -1,12 +1,10 @@
 package com.hero.retrywhendo;
 
-import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.hero.retrywhendo.interfaces.CallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
 
-import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,19 +18,22 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 public class Builder<T> {
 
     /**
+     * 是否调试
+     */
+    private boolean isDebug;
+
+    /**
      * 操作所携带的参数
      */
     private T t;
 
     /**
      * 重试结束，最终的回调
-     * 注意此处使用弱引用 所以不要以局部变量作为参数，否则很快被回收
      */
     private CallBack finalCallBack;
 
     /**
      * 操作暴露的接口
-     * 注意此处使用弱引用 所以不要以局部变量作为参数，否则很快被回收
      */
     private OnDoOperationListener onDoOperationListener;
 
@@ -55,6 +56,10 @@ public class Builder<T> {
      * 使用AutoDispose 防止内存泄漏
      */
     private LifecycleOwner owner;
+
+    public boolean isDebug() {
+        return isDebug;
+    }
 
     public T getT() {
         return t;
@@ -82,6 +87,11 @@ public class Builder<T> {
 
     public LifecycleOwner getOwner() {
         return owner;
+    }
+
+    public Builder setIsDebug(boolean isDebug) {
+        this.isDebug = isDebug;
+        return this;
     }
 
     public Builder setSubscribeOnScheduler(Scheduler subscribeOnScheduler) {
