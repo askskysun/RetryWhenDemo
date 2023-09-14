@@ -13,6 +13,7 @@ import com.hero.retrywhendo.interfaces.CallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
 
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -43,8 +44,11 @@ public class FirstActivity extends AppCompatActivity {
         RetryWhenDoOperationHelper retryWhenDoOperationHelper = RetryWhenDoOperationHelper.getInstance()
                 //是否调试打印日志
                 .setIsDebug(true)
+                //此处参数意义为：第一次失败，3秒后重试；第二次失败，2秒后重试，第三次失败1秒后重试
                 //重试列表，即每次重试相隔的时间  默认3秒重试一次
                 .setDelayTimeList(Arrays.asList(3, 2, 1, 2, 4, 1))
+                //单位
+                .setUnit(TimeUnit.SECONDS)
                 // 执行线程 默认io线程
                 .setSubscribeOnScheduler(Schedulers.io())
                 //回调线程  默认主线程
@@ -56,6 +60,7 @@ public class FirstActivity extends AppCompatActivity {
                 //实现操作暴露的接口  即需要重试的操作
                 //操作暴露的接口  注意此处使用弱引用 所以不要以局部变量作为参数，否则很快被回收
                 .setOnDoOperationListener(new OnDoOperationListener<String, SimpleFailedBean, String>() {
+
                     /**
                      * 进行操作
                      *
@@ -64,13 +69,14 @@ public class FirstActivity extends AppCompatActivity {
                      */
                     @Override
                     public void onDoOperation(String str, CallBack<SimpleFailedBean, String> callBack) {
+                        //此处进行操作，可异步，也可同步；最终CallBack回调结果即可
+                        //此处模拟一个异步操作
                         count++;
                         Log.i(TAG, "doAsyncOperation: " + Thread.currentThread() + " 处理参数为： " + str + " count:" + count);
                         if (count > 3) {
                             callBack.onSuccess("成功");
                             return;
                         }
-                        //此处模拟一个异步操作
                         new Thread(new Runnable() {
                             @Override
                             public void run() {

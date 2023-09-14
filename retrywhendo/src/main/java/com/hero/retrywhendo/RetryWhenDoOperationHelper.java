@@ -66,7 +66,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                     if (builder.isDebug()) {
                         Log.i(TAG, delay + "秒后重试");
                     }
-                    return Observable.timer(delay, TimeUnit.SECONDS);
+                    return Observable.timer(delay, builder.getUnit());
                 }))
                 .subscribeOn(builder.getSubscribeOnScheduler())
                 //子线程中处理好的数据在主线程中返回

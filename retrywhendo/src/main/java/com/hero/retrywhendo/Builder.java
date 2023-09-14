@@ -7,6 +7,7 @@ import com.hero.retrywhendo.interfaces.OnDoOperationListener;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Scheduler;
@@ -43,6 +44,11 @@ public class Builder<T> {
     private List<Integer> delayTimeList = Arrays.asList(3);
 
     /**
+     * 单位
+     */
+    private TimeUnit unit = TimeUnit.SECONDS;
+
+    /**
      * 执行线程 默认io线程
      */
     private Scheduler subscribeOnScheduler = Schedulers.io();
@@ -56,6 +62,10 @@ public class Builder<T> {
      * 使用AutoDispose 防止内存泄漏
      */
     private LifecycleOwner owner;
+
+    public TimeUnit getUnit() {
+        return unit;
+    }
 
     public boolean isDebug() {
         return isDebug;
@@ -113,6 +123,12 @@ public class Builder<T> {
         return this;
     }
 
+    /**
+     * 传入参数
+     *
+     * @param t
+     * @return
+     */
     public Builder setParam(T t) {
         this.t = t;
         return this;
@@ -122,6 +138,11 @@ public class Builder<T> {
         if (delayTimeList != null && !delayTimeList.isEmpty()) {
             this.delayTimeList = delayTimeList;
         }
+        return this;
+    }
+
+    public Builder setUnit(TimeUnit unit) {
+        this.unit = unit;
         return this;
     }
 
