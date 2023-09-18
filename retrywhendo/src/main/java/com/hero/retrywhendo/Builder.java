@@ -39,6 +39,11 @@ public class Builder<T> {
     private OnDoOperationListener onDoOperationListener;
 
     /**
+     * 延迟执行时间，默认为0，不延迟
+     */
+    private long delay;
+
+    /**
      * 重试列表，即每次重试相隔的时间  默认3秒重试一次
      */
     private List<Integer> delayTimeList = Arrays.asList(3);
@@ -62,6 +67,10 @@ public class Builder<T> {
      * 使用AutoDispose 防止内存泄漏
      */
     private LifecycleOwner owner;
+
+    public long getDelay() {
+        return delay;
+    }
 
     public TimeUnit getUnit() {
         return unit;
@@ -118,6 +127,12 @@ public class Builder<T> {
         return this;
     }
 
+    /**
+     * 内部已有判断  可以传空值
+     *
+     * @param owner
+     * @return
+     */
     public Builder setOwner(LifecycleOwner owner) {
         this.owner = owner;
         return this;
@@ -131,6 +146,16 @@ public class Builder<T> {
      */
     public Builder setParam(T t) {
         this.t = t;
+        return this;
+    }
+
+    /**
+     * 延迟执行时间，默认为0，不延迟
+     */
+    public Builder setDelay(long delay) {
+        if (delay > 0) {
+            this.delay = delay;
+        }
         return this;
     }
 

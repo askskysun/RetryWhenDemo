@@ -44,6 +44,8 @@ public class FirstActivity extends AppCompatActivity {
         RetryWhenDoOperationHelper retryWhenDoOperationHelper = RetryWhenDoOperationHelper.getInstance()
                 //是否调试打印日志
                 .setIsDebug(true)
+                //延迟执行时间，默认为0，不延迟
+                .setDelay(2)
                 //此处参数意义为：第一次失败，3秒后重试；第二次失败，2秒后重试，第三次失败1秒后重试
                 //重试列表，即每次重试相隔的时间  默认3秒重试一次
                 .setDelayTimeList(Arrays.asList(3, 2, 1, 2, 4, 1))

@@ -15,8 +15,10 @@ import autodispose2.AutoDispose;
 import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
+import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.functions.Function;
 
 /**
  * <pre>
@@ -58,11 +60,13 @@ public class RetryWhenDoOperationHelper<T, F, S> {
     public RetryWhenDoOperationHelper doRetryWhenOperation() {
         count.set(0);
         isStopNow.set(false);
+
         Observable<Boolean> objectObservable = Observable.create((ObservableEmitter<Boolean> emitter) -> {
             doOperation(emitter);
         }).retryWhen((Observable<Throwable> errorObservable) -> errorObservable
                 .zipWith(builder.getDelayTimeList(), (Throwable e, Integer time) -> time)
-                .flatMap((Integer delay) -> {
+                //concatMap与flatMap唯一不同的是concat能保证Observer接收到Observable集合发送事件的顺序
+                .concatMap((Integer delay) -> {
                     if (builder.isDebug()) {
                         Log.i(TAG, delay + "秒后重试");
                     }
@@ -71,14 +75,24 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 .subscribeOn(builder.getSubscribeOnScheduler())
                 //子线程中处理好的数据在主线程中返回
                 .observeOn(builder.getObserveOnScheduler());
+        //断连则三秒后连接
+        Observable<Boolean> booleanObservable = Observable.timer(builder.getDelay(), TimeUnit.SECONDS)
+                .concatMap(new Function<Long, ObservableSource<Boolean>>() {
+                    @Override
+                    public ObservableSource<Boolean> apply(Long aLong) throws Throwable {
+                        Log.i(TAG, String.format("延迟%d秒执行", builder.getDelay()));
+                        return objectObservable;
+                    }
+                });
+
         Observer<Boolean> observer = getObserver();
         //使用AutoDispose 防止内存泄漏
         if (builder.getOwner() != null) {
-            objectObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.getOwner())))
+            booleanObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.getOwner())))
                     .subscribe(observer);
             return this;
         }
-        objectObservable.subscribe(observer);
+        booleanObservable.subscribe(observer);
         return this;
     }
 
