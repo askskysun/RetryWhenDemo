@@ -75,7 +75,6 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 .subscribeOn(builder.getSubscribeOnScheduler())
                 //子线程中处理好的数据在主线程中返回
                 .observeOn(builder.getObserveOnScheduler());
-        //断连则三秒后连接
         Observable<Boolean> booleanObservable = Observable.timer(builder.getDelay(), TimeUnit.SECONDS)
                 .concatMap(new Function<Long, ObservableSource<Boolean>>() {
                     @Override

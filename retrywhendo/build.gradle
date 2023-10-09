@@ -1,6 +1,8 @@
 plugins {
     id 'com.android.library'
 }
+apply plugin:'com.github.dcendents.android-maven'
+group='com.gitee.DragonStream'  // 使用github（group = 'com.github.你的github昵称'）时这一行可有可无 使用码云时要加上
 
 android {
     compileSdkVersion 30
@@ -29,7 +31,7 @@ android {
 
     task makeJar(type: Copy) {
         //删除存在的
-        delete 'build/libs/retrywhendo-1.0.jar'
+        delete 'build/libs/retrywhendo-1.0.1.jar'
         //设置拷贝的文件
         from('build/intermediates/aar_main_jar/release/')
         //打进jar包后的文件目录
@@ -38,7 +40,7 @@ android {
         //include ,exclude参数来设置过滤
         include('classes.jar')
         //重命名
-        rename('classes.jar', 'retrywhendo-1.0.jar')
+        rename('classes.jar', 'retrywhendo-1.0.1.jar')
     }
 
     makeJar.dependsOn(build)

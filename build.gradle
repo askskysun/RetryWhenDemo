@@ -6,7 +6,8 @@ buildscript {
     }
     dependencies {
         classpath "com.android.tools.build:gradle:4.2.1"
-
+        //https://www.jianshu.com/p/d7ed0b311e46
+        classpath'com.github.dcendents:android-maven-gradle-plugin:1.5' // 加入行
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
