@@ -18,6 +18,7 @@ import io.reactivex.rxjava3.core.ObservableEmitter;
 import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.functions.BiFunction;
 import io.reactivex.rxjava3.functions.Function;
 
 /**
@@ -57,16 +58,16 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         }
     }
 
-    public RetryWhenDoOperationHelper doRetryWhenOperation() {
+    public Disposable doRetryWhenOperation() {
         count.set(0);
         isStopNow.set(false);
 
         Observable<Boolean> objectObservable = Observable.create((ObservableEmitter<Boolean> emitter) -> {
             doOperation(emitter);
-        }).retryWhen((Observable<Throwable> errorObservable) -> errorObservable
-                .zipWith(builder.getDelayTimeList(), (Throwable e, Integer time) -> time)
+        }).retryWhen(errorObservable -> errorObservable
+                .zipWith(builder.getDelayTimeList(), (e, time) -> time)
                 //concatMap与flatMap唯一不同的是concat能保证Observer接收到Observable集合发送事件的顺序
-                .concatMap((Integer delay) -> {
+                .concatMap(delay -> {
                     if (builder.isDebug()) {
                         Log.i(TAG, delay + "秒后重试");
                     }
@@ -75,13 +76,11 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 .subscribeOn(builder.getSubscribeOnScheduler())
                 //子线程中处理好的数据在主线程中返回
                 .observeOn(builder.getObserveOnScheduler());
+        //延迟处理
         Observable<Boolean> booleanObservable = Observable.timer(builder.getDelay(), TimeUnit.SECONDS)
-                .concatMap(new Function<Long, ObservableSource<Boolean>>() {
-                    @Override
-                    public ObservableSource<Boolean> apply(Long aLong) throws Throwable {
-                        Log.i(TAG, String.format("延迟%d秒执行", builder.getDelay()));
-                        return objectObservable;
-                    }
+                .concatMap((Function<Long, ObservableSource<Boolean>>) aLong -> {
+                    Log.i(TAG, String.format("延迟%d秒执行", builder.getDelay()));
+                    return objectObservable;
                 });
 
         Observer<Boolean> observer = getObserver();
@@ -89,10 +88,10 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         if (builder.getOwner() != null) {
             booleanObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.getOwner())))
                     .subscribe(observer);
-            return this;
+            return disposable;
         }
         booleanObservable.subscribe(observer);
-        return this;
+        return disposable;
     }
 
     private Observer<Boolean> getObserver() {
@@ -156,7 +155,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 }
 
                 if (builder.isDebug()) {
-                    //在最后一次时 emitter.isDisposed() = true，无法使用 onNext传递
+                    //在最后一次时 emitter.isDisposed() = true，无法使用 onNext传递 disposable 则大多数情况是true，偶现false
                     Log.i(TAG, "emitter.isDisposed：" + emitter.isDisposed() + " disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
                 }
                 count.set(count.get() + 1);

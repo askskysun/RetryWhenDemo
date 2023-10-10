@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
@@ -26,6 +27,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 public class FirstActivity extends AppCompatActivity {
     private static final String TAG = "FirstActivity";
     private static int count;
+    private Disposable disposable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,9 +41,16 @@ public class FirstActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.i(TAG, "onDestroy: disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
+    }
+
     public void doRetryWhenOperation() {
         count = 0;
-        RetryWhenDoOperationHelper retryWhenDoOperationHelper = RetryWhenDoOperationHelper.getInstance()
+        Log.i(TAG, "doRetryWhenOperation: disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
+        disposable = RetryWhenDoOperationHelper.getInstance()
                 //是否调试打印日志
                 .setIsDebug(true)
                 //延迟执行时间，默认为0，不延迟
@@ -75,10 +84,10 @@ public class FirstActivity extends AppCompatActivity {
                         //此处模拟一个异步操作
                         count++;
                         Log.i(TAG, "doAsyncOperation: " + Thread.currentThread() + " 处理参数为： " + str + " count:" + count);
-                        if (count > 3) {
+                       /* if (count > 3) {
                             callBack.onSuccess("成功");
                             return;
-                        }
+                        }*/
                         new Thread(new Runnable() {
                             @Override
                             public void run() {
