@@ -50,6 +50,11 @@ public class FirstActivity extends AppCompatActivity {
     public void doRetryWhenOperation() {
         count = 0;
         Log.i(TAG, "doRetryWhenOperation: disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
+        //判断是否正在进行
+        if (disposable != null && !disposable.isDisposed()) {
+            return;
+        }
+
         disposable = RetryWhenDoOperationHelper.getInstance()
                 //是否调试打印日志
                 .setIsDebug(true)
