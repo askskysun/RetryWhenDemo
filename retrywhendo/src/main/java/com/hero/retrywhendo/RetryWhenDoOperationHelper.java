@@ -18,7 +18,6 @@ import io.reactivex.rxjava3.core.ObservableEmitter;
 import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
-import io.reactivex.rxjava3.functions.BiFunction;
 import io.reactivex.rxjava3.functions.Function;
 
 /**
@@ -150,13 +149,9 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         onDoOperationListener.onDoOperation(builder.getT(), new CallBack<F, S>() {
             @Override
             public void onFailed(F failedBean) {
-                if (emitter == null) {
-                    return;
-                }
-
                 if (builder.isDebug()) {
                     //在最后一次时 emitter.isDisposed() = true，无法使用 onNext传递 disposable 则大多数情况是true，偶现false
-                    Log.i(TAG, "emitter.isDisposed：" + emitter.isDisposed() + " disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
+                    Log.i(TAG, "emitter.isDisposed：" + (emitter == null ? "null" : emitter.isDisposed()) + " disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
                 }
                 count.set(count.get() + 1);
                 if (count.get() > builder.getDelayTimeList().size()) {
@@ -165,13 +160,16 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                         CallBack finalCallBack = builder.getFinalCallBack();
                         finalCallBack.onFailed(failedBean);
                     }
-                    emitter.onNext(false);
-                    emitter.onComplete();
+                    if (!isDisposed(emitter)) {
+                        emitter.onNext(false);
+                        emitter.onComplete();
+                    }
                     return;
                 }
-
-                //重试次数未使用完，报个错，使之能进行重试
-                emitter.onError(new RuntimeException("处理失败"));
+                if (!isDisposed(emitter)) {
+                    //重试次数未使用完，报个错，使之能进行重试
+                    emitter.onError(new RuntimeException("处理失败"));
+                }
             }
 
             /**
@@ -180,17 +178,16 @@ public class RetryWhenDoOperationHelper<T, F, S> {
              */
             @Override
             public void onSuccess(S successBean) {
-                if (emitter == null) {
-                    return;
-                }
                 //回调最终结果
                 if (isCanCallBack()) {
                     CallBack finalCallBack = builder.getFinalCallBack();
                     finalCallBack.onSuccess(successBean);
                 }
-                emitter.onNext(true);
-                //结束
-                emitter.onComplete();
+                if (!isDisposed(emitter)) {
+                    emitter.onNext(true);
+                    //结束
+                    emitter.onComplete();
+                }
             }
         });
     }
@@ -208,6 +205,23 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         }
 
         isStopNow.set(true);
+    }
+
+    /**
+     * 判断是否已经取消
+     * io.reactivex.rxjava3.exceptions.UndeliverableException: The exception could not be delivered to the consumer because it has already canceled/disposed the flow or the exception has nowhere to go to begin with. Further reading: https://github.com/ReactiveX/RxJava/wiki/What's-different-in-2.0#error-handling | java.lang.RuntimeException: 处理失败
+     *
+     * @return
+     */
+    private boolean isDisposed(ObservableEmitter emitter) {
+        if (disposable == null || emitter == null) {
+            return true;
+        }
+        if (disposable.isDisposed() || emitter.isDisposed()) {
+            return true;
+        }
+
+        return false;
     }
 }
 /**
