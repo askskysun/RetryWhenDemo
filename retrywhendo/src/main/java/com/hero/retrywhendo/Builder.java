@@ -2,7 +2,8 @@ package com.hero.retrywhendo;
 
 import androidx.lifecycle.LifecycleOwner;
 
-import com.hero.retrywhendo.interfaces.CallBack;
+import com.hero.retrywhendo.interfaces.FinalCallBack;
+import com.hero.retrywhendo.interfaces.OperationCallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
 
 import java.util.Arrays;
@@ -31,7 +32,7 @@ public class Builder<T> {
     /**
      * 重试结束，最终的回调
      */
-    private CallBack finalCallBack;
+    private FinalCallBack finalOperationCallBack;
 
     /**
      * 操作暴露的接口
@@ -84,8 +85,8 @@ public class Builder<T> {
         return t;
     }
 
-    public CallBack getFinalCallBack() {
-        return finalCallBack;
+    public FinalCallBack getFinalCallBack() {
+        return finalOperationCallBack;
     }
 
     public OnDoOperationListener getOnDoOperationListener() {
@@ -171,8 +172,8 @@ public class Builder<T> {
         return this;
     }
 
-    public Builder setFinalCallBack(CallBack finalCallBack) {
-        this.finalCallBack = finalCallBack;
+    public Builder setFinalCallBack(FinalCallBack finalOperationCallBack) {
+        this.finalOperationCallBack = finalOperationCallBack;
         return this;
     }
 
@@ -189,7 +190,7 @@ public class Builder<T> {
     public String toString() {
         return "Builder{" +
                 "t=" + JsonUtils.javabeanToJson(t) +
-                ", finalCallBack=" + finalCallBack +
+                ", finalCallBack=" + finalOperationCallBack +
                 ", onDoOperationListener=" + onDoOperationListener +
                 ", delayTimeList=" + delayTimeList.toString() +
                 ", subscribeOnScheduler=" + subscribeOnScheduler +

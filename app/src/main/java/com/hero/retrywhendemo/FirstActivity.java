@@ -9,13 +9,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.hero.retrywhendo.JsonUtils;
 import com.hero.retrywhendo.RetryWhenDoOperationHelper;
 import com.hero.retrywhendo.bean.SimpleFailedBean;
-import com.hero.retrywhendo.interfaces.CallBack;
+import com.hero.retrywhendo.interfaces.FinalCallBack;
+import com.hero.retrywhendo.interfaces.OperationCallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
@@ -81,32 +83,37 @@ public class FirstActivity extends AppCompatActivity {
                      * 进行操作
                      *
                      * @param str 操作所传入的参数
-                     * @param callBack 每次操作的回调  注意与上面最终的回调区分 ；其中回调的失败、成功的数据类型可以自定义 F, S
+                     * @param operationCallBack 每次操作的回调  注意与上面最终的回调区分 ；其中回调的失败、成功的数据类型可以自定义 F, S
                      */
                     @Override
-                    public void onDoOperation(String str, CallBack<SimpleFailedBean, String> callBack) {
+                    public void onDoOperation(String str, OperationCallBack<SimpleFailedBean, String> operationCallBack) {
                         //此处进行操作，可异步，也可同步；最终CallBack回调结果即可
                         //此处模拟一个异步操作
                         count++;
                         Log.i(TAG, "doAsyncOperation: " + Thread.currentThread() + " 处理参数为： " + str + " count:" + count);
-                       /* if (count > 3) {
-                            callBack.onSuccess("成功");
+                     /*   if (count > 3) {
+                            operationCallBack.onSuccess("成功");
                             return;
                         }*/
+
+                        //测试过程出现异常
+                       /* String strr = null;
+                        boolean equals = strr.equals("");*/
+
                         new Thread(new Runnable() {
                             @Override
                             public void run() {
                                 SimpleFailedBean simpleFailedBean = new SimpleFailedBean();
                                 simpleFailedBean.setCodeStr("111");
                                 simpleFailedBean.setMsgStr("传入参数为：" + str + "，但是处理失败了！");
-                                callBack.onFailed(simpleFailedBean);
+                                operationCallBack.onFailed(simpleFailedBean);
                             }
                         }).start();
                     }
                 })
                 // 操作的回调 其中失败成功的数据结构是个泛型，可以自己定义
                 //重试结束，最终的回调
-                .setFinalCallBack(new CallBack<SimpleFailedBean, String>() {
+                .setFinalCallBack(new FinalCallBack<SimpleFailedBean, String>() {
                     @Override
                     public void onFailed(SimpleFailedBean failedBean) {
                         Log.i(TAG, "final onFailed " + Thread.currentThread() + "  simpleFailedBean:" + JsonUtils.javabeanToJson(failedBean));
@@ -115,6 +122,11 @@ public class FirstActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess(String successBean) {
                         Log.i(TAG, "final onSuccess: " + Thread.currentThread() + "  " + successBean);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e) {
+                        Log.i(TAG, "final onError: " + Thread.currentThread() + "  " + e.toString());
                     }
                 })
                 //构建对象

@@ -2,7 +2,8 @@ package com.hero.retrywhendo;
 
 import android.util.Log;
 
-import com.hero.retrywhendo.interfaces.CallBack;
+import com.hero.retrywhendo.interfaces.FinalCallBack;
+import com.hero.retrywhendo.interfaces.OperationCallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
 
 import org.jetbrains.annotations.NotNull;
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import autodispose2.AutoDispose;
 import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
+import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
 import io.reactivex.rxjava3.core.ObservableSource;
@@ -62,7 +64,24 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         isStopNow.set(false);
 
         Observable<Boolean> objectObservable = Observable.create((ObservableEmitter<Boolean> emitter) -> {
-            doOperation(emitter);
+            try {
+                doOperation(emitter);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+                if (builder.isDebug()) {
+                    Log.e(TAG, "doRetryWhenOperation() doOperation()", exception);
+                }
+                //回调最终结果
+                if (isCanCallBack()) {
+                    FinalCallBack finalOperationCallBack = builder.getFinalCallBack();
+                    finalOperationCallBack.onError(exception);
+                }
+                if (!isDisposed(emitter)) {
+                    emitter.onNext(true);
+                    //结束
+                    emitter.onComplete();
+                }
+            }
         }).retryWhen(errorObservable -> errorObservable
                 .zipWith(builder.getDelayTimeList(), (e, time) -> time)
                 //concatMap与flatMap唯一不同的是concat能保证Observer接收到Observable集合发送事件的顺序
@@ -117,8 +136,8 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 }
 
                 if (isCanCallBack()) {
-                    CallBack finalCallBack = builder.getFinalCallBack();
-                    finalCallBack.onFailed(e.getMessage());
+                    FinalCallBack finalOperationCallBack = builder.getFinalCallBack();
+                    finalOperationCallBack.onError(e);
                 }
             }
 
@@ -146,30 +165,14 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             return;
         }
 
-        onDoOperationListener.onDoOperation(builder.getT(), new CallBack<F, S>() {
+        onDoOperationListener.onDoOperation(builder.getT(), new OperationCallBack<F, S>() {
             @Override
             public void onFailed(F failedBean) {
                 if (builder.isDebug()) {
                     //在最后一次时 emitter.isDisposed() = true，无法使用 onNext传递 disposable 则大多数情况是true，偶现false
                     Log.i(TAG, "emitter.isDisposed：" + (emitter == null ? "null" : emitter.isDisposed()) + " disposable:" + (disposable == null ? "null" : disposable.isDisposed()));
                 }
-                count.set(count.get() + 1);
-                if (count.get() > builder.getDelayTimeList().size()) {
-                    //重试列表已经都重试完了，最终回调错误信息
-                    if (isCanCallBack()) {
-                        CallBack finalCallBack = builder.getFinalCallBack();
-                        finalCallBack.onFailed(failedBean);
-                    }
-                    if (!isDisposed(emitter)) {
-                        emitter.onNext(false);
-                        emitter.onComplete();
-                    }
-                    return;
-                }
-                if (!isDisposed(emitter)) {
-                    //重试次数未使用完，报个错，使之能进行重试
-                    emitter.onError(new RuntimeException("处理失败"));
-                }
+                onDoOperationFaile(failedBean, emitter);
             }
 
             /**
@@ -180,8 +183,8 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             public void onSuccess(S successBean) {
                 //回调最终结果
                 if (isCanCallBack()) {
-                    CallBack finalCallBack = builder.getFinalCallBack();
-                    finalCallBack.onSuccess(successBean);
+                    FinalCallBack finalOperationCallBack = builder.getFinalCallBack();
+                    finalOperationCallBack.onSuccess(successBean);
                 }
                 if (!isDisposed(emitter)) {
                     emitter.onNext(true);
@@ -190,6 +193,26 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                 }
             }
         });
+    }
+
+    private void onDoOperationFaile(F failedBean, ObservableEmitter<Boolean> emitter) {
+        count.set(count.get() + 1);
+        if (count.get() > builder.getDelayTimeList().size()) {
+            //重试列表已经都重试完了，最终回调错误信息
+            if (isCanCallBack()) {
+                FinalCallBack finalOperationCallBack = builder.getFinalCallBack();
+                finalOperationCallBack.onFailed(failedBean);
+            }
+            if (!isDisposed(emitter)) {
+                emitter.onNext(false);
+                emitter.onComplete();
+            }
+            return;
+        }
+        if (!isDisposed(emitter)) {
+            //重试次数未使用完，报个错，使之能进行重试
+            emitter.onError(new RuntimeException("处理失败"));
+        }
     }
 
     private boolean isCanCallBack() {
