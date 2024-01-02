@@ -1,5 +1,6 @@
 package com.hero.retrywhendo;
 
+import android.os.Looper;
 import android.util.Log;
 
 import com.hero.retrywhendo.interfaces.FinalCallBack;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import autodispose2.AutoDispose;
 import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
@@ -104,8 +106,18 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         Observer<Boolean> observer = getObserver();
         //使用AutoDispose 防止内存泄漏
         if (builder.getOwner() != null) {
-            booleanObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.getOwner())))
-                    .subscribe(observer);
+            if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
+                booleanObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.getOwner())))
+                        .subscribe(observer);
+                return disposable;
+            }
+            //使用rxjava切换到主线程
+            Observable.just(0)
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(integer -> {
+                        booleanObservable.to(AutoDispose.autoDisposable(AndroidLifecycleScopeProvider.from(builder.getOwner())))
+                                .subscribe(observer);
+                    });
             return disposable;
         }
         booleanObservable.subscribe(observer);
