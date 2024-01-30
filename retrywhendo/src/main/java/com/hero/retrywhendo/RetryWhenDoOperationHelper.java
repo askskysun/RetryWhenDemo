@@ -39,14 +39,14 @@ public class RetryWhenDoOperationHelper<T, F, S> {
     /**
      * 重试的次数
      */
-    private AtomicInteger count = new AtomicInteger(0);
+    private int retryCount;
     private Builder<T> builder = new Builder<>();
     private Disposable disposable;
 
     /**
      * 是否已经停止
      */
-    private AtomicBoolean isStopNow = new AtomicBoolean(false);
+    private boolean isStopNow;
 
     public static Builder getInstance() {
         return new Builder();
@@ -62,8 +62,8 @@ public class RetryWhenDoOperationHelper<T, F, S> {
     }
 
     public Disposable doRetryWhenOperation() {
-        count.set(0);
-        isStopNow.set(false);
+        retryCount = 0;
+        isStopNow = false;
 
         Observable<Boolean> objectObservable = Observable.create((ObservableEmitter<Boolean> emitter) -> {
             try {
@@ -208,8 +208,8 @@ public class RetryWhenDoOperationHelper<T, F, S> {
     }
 
     private void onDoOperationFaile(F failedBean, ObservableEmitter<Boolean> emitter) {
-        count.set(count.get() + 1);
-        if (count.get() > builder.getDelayTimeList().size()) {
+        retryCount++;
+        if (retryCount > builder.getDelayTimeList().size()) {
             //重试列表已经都重试完了，最终回调错误信息
             if (isCanCallBack()) {
                 FinalCallBack finalOperationCallBack = builder.getFinalCallBack();
@@ -231,7 +231,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         if (builder.getFinalCallBack() == null) {
             return false;
         }
-        return !isStopNow.get();
+        return !isStopNow;
     }
 
     public void stopNow() {
@@ -239,7 +239,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             disposable.dispose();
         }
 
-        isStopNow.set(true);
+        isStopNow = true;
     }
 
     /**
