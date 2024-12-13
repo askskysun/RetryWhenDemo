@@ -28,7 +28,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
  */
 public class FirstActivity extends AppCompatActivity {
     private static final String TAG = "FirstActivity";
-    private static int count;
+    private static volatile int count;
     private Disposable disposable;
 
     @Override
@@ -64,7 +64,8 @@ public class FirstActivity extends AppCompatActivity {
                 .setDelay(2)
                 //此处参数意义为：第一次失败，3秒后重试；第二次失败，2秒后重试，第三次失败1秒后重试
                 //重试列表，即每次重试相隔的时间  默认3秒重试一次
-                .setDelayTimeList(Arrays.asList(3, 2, 1, 2, 4, 1))
+//                .setDelayTimeList(Arrays.asList(3, 2, 1, 2, 4, 1))
+                .setDelayTimeList(Arrays.asList(1, 1))
                 //单位
                 .setUnit(TimeUnit.SECONDS)
                 // 执行线程 默认io线程
@@ -91,10 +92,7 @@ public class FirstActivity extends AppCompatActivity {
                         //此处模拟一个异步操作
                         count++;
                         Log.i(TAG, "doAsyncOperation: " + Thread.currentThread() + " 处理参数为： " + str + " count:" + count);
-                     /*   if (count > 3) {
-                            operationCallBack.onSuccess("成功");
-                            return;
-                        }*/
+
 
                         //测试过程出现异常
                        /* String strr = null;
@@ -103,10 +101,15 @@ public class FirstActivity extends AppCompatActivity {
                         new Thread(new Runnable() {
                             @Override
                             public void run() {
+                                /*if (count > 1) {
+                                    operationCallBack.onSuccess("成功");
+                                    return;
+                                }
                                 SimpleFailedBean simpleFailedBean = new SimpleFailedBean();
                                 simpleFailedBean.setCodeStr("111");
                                 simpleFailedBean.setMsgStr("传入参数为：" + str + "，但是处理失败了！");
-                                operationCallBack.onFailed(simpleFailedBean);
+                                operationCallBack.onFailed(simpleFailedBean);*/
+                                operationCallBack.onSuccess("");
                             }
                         }).start();
                     }
