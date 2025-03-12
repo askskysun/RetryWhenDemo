@@ -21,6 +21,7 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Function;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
  * <pre>
@@ -55,7 +56,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             this.builder = builder;
         }
         if (builder.isDebug()) {
-            Log.i(TAG, "配置builder：" + this.builder.toString());
+            Log.i(TAG, String.format("配置builder:%s，线程：%s", this.builder.toString(), Thread.currentThread().getName()));
         }
     }
 
@@ -65,40 +66,60 @@ public class RetryWhenDoOperationHelper<T, F, S> {
 
         Observable<OnNextBean> objectObservable = Observable.create((ObservableEmitter<OnNextBean> emitter) -> {
                     //在最后一次重试时 emitter.isDisposed() = true，无法使用 onNext 和 onError传递
-                    try {
-                        doOperation(emitter);
-                    } catch (Exception exception) {
-                        exception.printStackTrace();
-                        if (builder.isDebug()) {
-                            Log.e(TAG, "doRetryWhenOperation() doOperation()", exception);
-                        }
-                        if (!isDisposed(emitter)) {
-                            emitter.onError(exception);
-                            //结束
-                            emitter.onComplete();
-                        } else {
-                            //emitter.isDisposed() = false 证明已经是最后一次
-                            onFinalError(exception);
-                        }
-                    }
+            //这里默认在io线程处理
+            Scheduler subscribeOnScheduler = builder.getSubscribeOnScheduler();
+            if (subscribeOnScheduler == null) {
+                subscribeOnScheduler = Schedulers.io();
+            }
+
+            //使用rxjava切换到io线程
+            Observable.just(0)
+                            .observeOn(subscribeOnScheduler)
+                            .subscribe(integer -> {
+                                try {
+                                    doOperation(emitter);
+                                } catch (Exception exception) {
+                                    exception.printStackTrace();
+                                    if (builder.isDebug()) {
+                                        Log.e(TAG, "doRetryWhenOperation() doOperation()", exception);
+                                    }
+                                    if (!isDisposed(emitter)) {
+                                        emitter.onError(exception);
+                                        //结束
+                                        emitter.onComplete();
+                                    } else {
+                                        //emitter.isDisposed() = false 证明已经是最后一次
+                                        onFinalError(exception);
+                                    }
+                                }
+                            });
                 }).retryWhen(errorObservable -> errorObservable
                         .zipWith(builder.getDelayTimeList(), (e, time) -> time)
                         //concatMap与flatMap唯一不同的是concat能保证Observer接收到Observable集合发送事件的顺序
                         .concatMap(delay -> {
                             if (builder.isDebug()) {
-                                Log.i(TAG, delay + "秒后重试");
+                                Log.i(TAG, String.format("%d秒后重试，线程：%s", delay, Thread.currentThread().getName()));
                             }
                             return Observable.timer(delay, builder.getUnit());
-                        }))
-                .subscribeOn(builder.getSubscribeOnScheduler())
-                //子线程中处理好的数据在主线程中返回
-                .observeOn(builder.getObserveOnScheduler());
+                        }));
+//                .subscribeOn(builder.getSubscribeOnScheduler())
+
+        Scheduler observeOnScheduler = builder.getObserveOnScheduler();
+        if (observeOnScheduler != null) {
+            objectObservable.observeOn(observeOnScheduler);
+        }
+
+        //子线程中处理好的数据在主线程中返回
         //延迟处理
-        Observable<OnNextBean> booleanObservable = Observable.timer(builder.getDelay(), TimeUnit.SECONDS)
-                .concatMap((Function<Long, ObservableSource<OnNextBean>>) aLong -> {
-                    Log.i(TAG, String.format("延迟%d秒执行", builder.getDelay()));
-                    return objectObservable;
-                });
+        Observable<Long> timer = Observable.timer(builder.getDelay(), TimeUnit.SECONDS);
+        Scheduler subscribeOnScheduler = builder.getSubscribeOnScheduler();
+        if (subscribeOnScheduler != null) {
+            timer = timer.subscribeOn(subscribeOnScheduler);
+        }
+        Observable<OnNextBean> booleanObservable = timer.concatMap((Function<Long, ObservableSource<OnNextBean>>) aLong -> {
+            Log.i(TAG, String.format("延迟%d秒执行，线程：%s", builder.getDelay(), Thread.currentThread().getName()));
+            return objectObservable;
+        });
 
         Observer<OnNextBean> observer = getObserver();
         //使用AutoDispose 防止内存泄漏
@@ -127,21 +148,21 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             public void onSubscribe(@NotNull Disposable disposable) {
                 RetryWhenDoOperationHelper.this.disposable = disposable;
                 if (builder.isDebug()) {
-                    Log.i(TAG, "Disposable..." + Thread.currentThread());
+                    Log.i(TAG, String.format("Disposable...线程：%s", Thread.currentThread().getName()));
                 }
             }
 
             @Override
             public void onNext(@NotNull OnNextBean onNextBean) {
                 if (builder.isDebug()) {
-                    Log.i(TAG, "onNext..." + Thread.currentThread() + " onNextBean: " + JsonUtils.javabeanToJson(onNextBean));
+                    Log.i(TAG, String.format("onNext... onNextBean: %s,线程：%s", JsonUtils.javabeanToJson(onNextBean), Thread.currentThread().getName()));
                 }
             }
 
             @Override
             public void onError(@NotNull Throwable e) {
                 if (builder.isDebug()) {
-                    Log.e(TAG, "onError... 这里只有最后一次重试中异常才会到，其他被拦截而重试了 " + Thread.currentThread(), e);
+                    Log.e(TAG, "onError... 这里只有最后一次重试中异常才会到，其他被拦截而重试了 线程：" + Thread.currentThread(), e);
                 }
                 onFinalError(e);
             }
@@ -149,7 +170,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             @Override
             public void onComplete() {
                 if (builder.isDebug()) {
-                    Log.i(TAG, "onComplete..." + Thread.currentThread());
+                    Log.i(TAG, "onComplete... 线程：" + Thread.currentThread());
                 }
             }
         };
@@ -162,7 +183,8 @@ public class RetryWhenDoOperationHelper<T, F, S> {
      * @param emitter
      */
     private void doOperation(ObservableEmitter<OnNextBean> emitter) {
-        Log.i(TAG, "开始执行操作: 在最后一次重试时 emitter.isDisposed() = true，无法使用 onNext 和 onError传递");
+        Log.i(TAG, "开始执行操作: 在最后一次重试时 emitter.isDisposed() = true，无法使用 onNext 和 onError传递 默认在io线程处理 设定线程：" + Thread.currentThread().getName());
+
         //进行操作（同步、异步都使用回调结果处理）
         //传入操作后回调处理
         OnDoOperationListener onDoOperationListener = builder.getOnDoOperationListener();
@@ -188,17 +210,19 @@ public class RetryWhenDoOperationHelper<T, F, S> {
             public void onSuccess(S successBean) {
                 if (builder.isDebug()) {
                     Log.i(TAG, "onSuccess successBean:"
-                            + JsonUtils.javabeanToJson(successBean) + " Thread:" + Thread.currentThread());
+                            + JsonUtils.javabeanToJson(successBean) + " Thread:" + Thread.currentThread().getName());
                 }
 
                 onFinalSuccess(successBean);
-                if (!isDisposed(emitter)) {
+                emitter.onComplete();
+
+                /*if (!isDisposed(emitter)) {
                     OnNextBean onNextBean = new OnNextBean();
                     onNextBean.setS(successBean);
                     emitter.onNext(onNextBean);
                     //结束
                     emitter.onComplete();
-                }
+                }*/
             }
         });
     }
@@ -209,7 +233,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         if (retryCount > builder.getDelayTimeList().size()) {
             //重试执行完毕 emitter 已经关闭
             if (builder.isDebug()) {
-                Log.i(TAG, "重试执行完毕 emitter 已经关闭");
+                Log.i(TAG, "重试执行完毕 emitter 已经关闭 线程：" + Thread.currentThread().getName());
             }
             onFinalFailed(failedBean);
             //重试列表已经都重试完了，最终回调错误信息
@@ -223,7 +247,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         }
         if (!isDisposed) {
             if (builder.isDebug()) {
-                Log.i(TAG, "onDoOperationFaile 重试次数未使用完，报个错，使之能进行重试");
+                Log.i(TAG, "onDoOperationFaile 重试次数未使用完，报个错，使之能进行重试 线程：" + Thread.currentThread().getName());
             }
             //重试次数未使用完，报个错，使之能进行重试
             emitter.onError(new RuntimeException("处理失败"));
@@ -263,6 +287,10 @@ public class RetryWhenDoOperationHelper<T, F, S> {
                     .observeOn(observeOnScheduler)
                     .subscribe(integer -> {
                         if (isCanCallBack()) {
+                            if (builder.isDebug()) {
+                                Log.i(TAG, "最终结果 onSuccess successBean:"
+                                        + JsonUtils.javabeanToJson(successBean) + " Thread:" + Thread.currentThread().getName());
+                            }
                             FinalCallBack finalOperationCallBack = builder.getFinalCallBack();
                             finalOperationCallBack.onSuccess(successBean);
                         }
@@ -323,7 +351,7 @@ public class RetryWhenDoOperationHelper<T, F, S> {
         if (builder.isDebug()) {
             Log.i(TAG, "isDisposed:" + disposable.isDisposed()
                     + " emitter.isDisposed:" + emitter.isDisposed()
-                    + " Thread:" + Thread.currentThread());
+                    + " Thread:" + Thread.currentThread().getName());
         }
 
         if (disposable.isDisposed() || emitter.isDisposed()) {

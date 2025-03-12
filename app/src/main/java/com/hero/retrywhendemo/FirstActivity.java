@@ -4,22 +4,23 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.hero.retrywhendo.JsonUtils;
+
 import com.hero.retrywhendo.RetryWhenDoOperationHelper;
 import com.hero.retrywhendo.bean.SimpleFailedBean;
 import com.hero.retrywhendo.interfaces.FinalCallBack;
-import com.hero.retrywhendo.interfaces.OperationCallBack;
 import com.hero.retrywhendo.interfaces.OnDoOperationListener;
+import com.hero.retrywhendo.interfaces.OperationCallBack;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+
 
 /**
  * <pre>
@@ -61,11 +62,11 @@ public class FirstActivity extends AppCompatActivity {
                 //是否调试打印日志
                 .setIsDebug(true)
                 //延迟执行时间，默认为0，不延迟
-                .setDelay(2)
+//                .setDelay(2)
                 //此处参数意义为：第一次失败，3秒后重试；第二次失败，2秒后重试，第三次失败1秒后重试
                 //重试列表，即每次重试相隔的时间  默认3秒重试一次
-//                .setDelayTimeList(Arrays.asList(3, 2, 1, 2, 4, 1))
-                .setDelayTimeList(Arrays.asList(1, 1))
+                .setDelayTimeList(Arrays.asList(3, 2, 1, 2, 4, 1))
+//                .setDelayTimeList(Arrays.asList(1, 1))
                 //单位
                 .setUnit(TimeUnit.SECONDS)
                 // 执行线程 默认io线程
@@ -95,21 +96,21 @@ public class FirstActivity extends AppCompatActivity {
 
 
                         //测试过程出现异常
-                       /* String strr = null;
+                        /*String strr = null;
                         boolean equals = strr.equals("");*/
 
                         new Thread(new Runnable() {
                             @Override
                             public void run() {
-                                /*if (count > 1) {
+                                /*if (count > 0) {
                                     operationCallBack.onSuccess("成功");
                                     return;
-                                }
+                                }*/
                                 SimpleFailedBean simpleFailedBean = new SimpleFailedBean();
                                 simpleFailedBean.setCodeStr("111");
                                 simpleFailedBean.setMsgStr("传入参数为：" + str + "，但是处理失败了！");
-                                operationCallBack.onFailed(simpleFailedBean);*/
-                                operationCallBack.onSuccess("");
+                                operationCallBack.onFailed(simpleFailedBean);
+//                                operationCallBack.onSuccess("");
                             }
                         }).start();
                     }
@@ -119,7 +120,7 @@ public class FirstActivity extends AppCompatActivity {
                 .setFinalCallBack(new FinalCallBack<SimpleFailedBean, String>() {
                     @Override
                     public void onFailed(SimpleFailedBean failedBean) {
-                        Log.i(TAG, "final onFailed " + Thread.currentThread() + "  simpleFailedBean:" + JsonUtils.javabeanToJson(failedBean));
+                        Log.i(TAG, "final onFailed " + Thread.currentThread() + "  simpleFailedBean:" + failedBean.toString());
                     }
 
                     @Override

@@ -37,6 +37,14 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+//    implementation 'com.gitee.DragonStream:RetryWhenDemo:v1.1.6'
+//    implementation 'com.gitee.DragonStream:RetryWhenDemo:v1.1.6'
+    api 'io.reactivex.rxjava3:rxjava:3.1.6'
+
+    // AutoDispose 2.x https://uber.github.io/AutoDispose/
+    api 'com.uber.autodispose2:autodispose-android:2.0.0'
+    api 'com.uber.autodispose2:autodispose-androidx-lifecycle:2.0.0'
+    api 'com.google.code.gson:gson:2.8.5'
 
     api project(':retrywhendo')
 }
