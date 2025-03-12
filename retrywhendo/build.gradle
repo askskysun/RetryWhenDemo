@@ -42,7 +42,14 @@ android {
         //重命名
         rename('classes.jar', 'retrywhendo-1.0.1.jar')
     }
-
+    /**
+     * 远程依赖
+     * 1、上传github；
+     * 2、码云同步；
+     * 3、创建新的发行版；
+     * 4、https://www.jitpack.io/ 同步下，并获取版本
+     */
+    //https://www.jitpack.io/
     makeJar.dependsOn(build)
 }
 
